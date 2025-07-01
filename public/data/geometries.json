@@ -1,0 +1,34 @@
+[
+    {
+      "id": 1,
+      "name": "Old Area",
+      "accuracy": "high",
+      "date": "2018-01-15",
+      "coordinates": [[51.51, -0.1], [51.51, -0.12], [51.53, -0.12], [51.53, -0.1]],
+      "type": "polygon"
+    },
+    {
+      "id": 2,
+      "name": "Newer Area",
+      "accuracy": "low",
+      "date": "2023-11-04",
+      "coordinates": [[51.505, -0.08], [51.505, -0.1], [51.507, -0.1], [51.507, -0.08]],
+      "type": "polygon"
+    },
+    {
+      "id": 3,
+      "name": "Triangle Park",
+      "accuracy": "medium",
+      "date": "2022-06-10",
+      "coordinates": [[51.509, -0.13], [51.51, -0.14], [51.511, -0.13]],
+      "type": "polygon"
+    },
+    {
+      "id": 4,
+      "name": "Pentagon Plaza",
+      "accuracy": "high",
+      "date": "2021-09-21",
+      "coordinates": [[51.512, -0.09], [51.513, -0.1], [51.514, -0.095], [51.5135, -0.088], [51.5125, -0.087]],
+      "type": "polygon"
+    }
+  ]
