@@ -1,13 +1,32 @@
 import { useMap, useMapEvents } from 'react-leaflet';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import L from 'leaflet';
 import { Geometry } from './GeometriesLayer';
 
 const OLD_THRESHOLD = new Date('2020-01-01');
 
-function GridLayer({ geometries }: { geometries: Geometry[] }) {
+interface GridLayerProps {
+    geometries: Geometry[];
+    isLocked?: boolean;
+}
+
+function GridLayer({ geometries, isLocked = false }: GridLayerProps) {
     const map = useMap();
     const gridLayerRef = useRef<L.LayerGroup | null>(null);
+    const [lockedGridSize, setLockedGridSize] = useState<number | null>(null);
+
+    // Store current grid size when lock state changes
+    useEffect(() => {
+        if (isLocked && !lockedGridSize && map) {
+            const zoom = map.getZoom();
+            const baseSize = 0.00009;
+            const zoomFactor = Math.pow(2, 19 - Math.min(Math.max(zoom, 0), 19));
+            setLockedGridSize(baseSize * zoomFactor);
+        }
+        if (!isLocked) {
+            setLockedGridSize(null);
+        }
+    }, [isLocked, map, lockedGridSize]);
 
     useMapEvents({
         zoomend: () => map && updateGrid(),
@@ -23,20 +42,40 @@ function GridLayer({ geometries }: { geometries: Geometry[] }) {
 
         const bounds = map.getBounds();
         const zoom = map.getZoom();
-        const gridSize = zoom > 15 ? 0.001 : zoom > 12 ? 0.01 : 0.1;
+        
+        // Use locked grid size or calculate based on zoom
+        let gridSize;
+        if (isLocked && lockedGridSize) {
+            gridSize = lockedGridSize;
+        } else {
+            const baseSize = 0.00009; // ~10m at equator
+            const zoomFactor = Math.pow(2, 19 - Math.min(Math.max(zoom, 0), 19));
+            gridSize = baseSize * zoomFactor;
+        }
+        
         const newGridLayer = L.layerGroup();
+        
+        // Get the center latitude to calculate the longitude adjustment factor
+        const centerLat = bounds.getCenter().lat;
+        // Adjust longitude step to maintain square cells
+        // cos(lat) gives the ratio between longitude and latitude degrees
+        const lngGridSize = gridSize / Math.cos(centerLat * Math.PI / 180);
 
-        for (let lat = Math.floor(bounds.getSouth() / gridSize) * gridSize; lat < bounds.getNorth(); lat += gridSize) {
-            for (let lng = Math.floor(bounds.getWest() / gridSize) * gridSize; lng < bounds.getEast(); lng += gridSize) {
+        // Align grid to WGS84 by snapping to grid size
+        const startLat = Math.floor(bounds.getSouth() / gridSize) * gridSize;
+        const startLng = Math.floor(bounds.getWest() / lngGridSize) * lngGridSize;
+
+        for (let lat = startLat; lat < bounds.getNorth(); lat += gridSize) {
+            for (let lng = startLng; lng < bounds.getEast(); lng += lngGridSize) {
                 const cellBounds = [
                     [lat, lng],
-                    [lat + gridSize, lng + gridSize],
+                    [lat + gridSize, lng + lngGridSize],
                 ];
 
                 const cellPolygon = L.polygon([
                     [lat, lng],
-                    [lat, lng + gridSize],
-                    [lat + gridSize, lng + gridSize],
+                    [lat, lng + lngGridSize],
+                    [lat + gridSize, lng + lngGridSize],
                     [lat + gridSize, lng],
                 ]);
 
@@ -76,7 +115,7 @@ function GridLayer({ geometries }: { geometries: Geometry[] }) {
                 gridLayerRef.current = null;
             }
         };
-    }, [map, geometries]);
+    }, [map, geometries, isLocked, lockedGridSize]);
 
     return null;
 }
